@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+
+{% if fact_of_day %}
+<div class="fotd-banner mb-5">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <div style="font-size:2.5rem; line-height:1;">📅</div>
+        </div>
+        <div class="col">
+            <p class="text-uppercase fw-bold mb-1" style="color: var(--primary); letter-spacing: 1px; font-size:0.82rem;">Факт дня</p>
+            <p class="fs-5 fw-semibold mb-1">{{ fact_of_day.content }}</p>
+            <small class="opacity-75">
+                <i class="bi bi-tag me-1"></i>{{ fact_of_day.breed.name_ru }} ({{ fact_of_day.breed.name_en }})
+            </small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="section-heading">Породы собак</h1>
+    {% if not current_user.is_authenticated %}
+    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-heart me-1"></i>Войдите, чтобы ставить лайки
+    </a>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    {% for breed in breeds %}
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card h-100">
+            <div class="breed-img-wrap">
+                <img
+                    src="{{ breed.image_url }}"
+                    class="breed-hero"
+                    alt="{{ breed.name_en }}"
+                    loading="lazy"
+                    onerror="this.parentElement.innerHTML='<div class=\'breed-hero-fallback\'><span>🐶</span></div>'">
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title fw-bold mb-0">{{ breed.name_ru }}</h5>
+                    <span class="badge-paw">{{ breed.name_en }}</span>
+                </div>
+                {% if breed.origin %}
+                <p class="text-muted small mb-1">
+                    <i class="bi bi-geo-alt me-1"></i>{{ breed.origin }}
+                    {% if breed.size %}&nbsp;·&nbsp;<i class="bi bi-rulers me-1"></i>{{ breed.size }}{% endif %}
+                    {% if breed.lifespan %}&nbsp;·&nbsp;<i class="bi bi-clock me-1"></i>{{ breed.lifespan }}{% endif %}
+                </p>
+                {% endif %}
+                {% if breed.description %}
+                <p class="card-text small text-muted mt-2">{{ breed.description[:120] }}…</p>
+                {% endif %}
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted small">
+                        <i class="bi bi-lightbulb me-1"></i>{{ breed.facts|length }} факта
+                    </span>
+                    <a href="{{ url_for('main.breed_detail', breed_id=breed.id) }}"
+                       class="btn btn-primary btn-sm">
+                        Подробнее <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info rounded-3">
+            <i class="bi bi-info-circle me-2"></i>
+            База данных пуста. Запустите <code>python seed.py</code> для добавления пород.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<hr class="my-5">
+
+<h2 class="section-heading mb-4">
+    <i class="bi bi-code-slash me-2" style="color:var(--primary)"></i>REST API
+</h2>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card p-4 text-center">
+            <div style="font-size:2.2rem;">📋</div>
+            <h6 class="fw-bold mt-2">Все породы</h6>
+            <p class="text-muted small mb-3"><code>GET /api/breeds</code></p>
+            <button class="btn btn-outline-primary btn-sm" onclick="fetchBreeds()">
+                <i class="bi bi-arrow-down-circle me-1"></i>Загрузить JSON
+            </button>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 text-center">
+            <div style="font-size:2.2rem;">🎲</div>
+            <h6 class="fw-bold mt-2">Случайный факт</h6>
+            <p class="text-muted small mb-3"><code>GET /api/random_fact</code></p>
+            <button class="btn btn-outline-primary btn-sm" onclick="fetchRandomFact()">
+                <i class="bi bi-shuffle me-1"></i>Получить факт
+            </button>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 text-center">
+            <div style="font-size:2.2rem;">🔍</div>
+            <h6 class="fw-bold mt-2">Порода по ID</h6>
+            <p class="text-muted small mb-3"><code>GET /api/breeds/&lt;id&gt;</code></p>
+            <div class="d-flex gap-2 justify-content-center">
+                <input type="number" id="breedIdInput" class="form-control form-control-sm"
+                       style="width:70px;" placeholder="ID" value="1" min="1">
+                <button class="btn btn-outline-primary btn-sm" onclick="fetchBreedById()">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="api-result-area" class="d-none">
+    <div class="card border-0" style="background:#1a1a2e;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span id="api-result-label" class="text-muted small fw-semibold" style="color:#aaa !important;"></span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="closeApiResult()" style="color:#aaa; border-color:#444;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <pre id="api-result-pre" class="mb-0"
+                 style="color:#7ee8a2; font-size:0.82rem; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;"></pre>
+        </div>
+    </div>
+</div>
+
+<div id="random-fact-display" class="d-none mt-3">
+    <div class="fotd-banner">
+        <div class="row align-items-center">
+            <div class="col-auto" style="font-size:2rem;">🎲</div>
+            <div class="col">
+                <p class="text-uppercase fw-bold mb-1" style="color:var(--primary); font-size:0.78rem; letter-spacing:1px;">Случайный факт</p>
+                <p class="fs-5 fw-semibold mb-1" id="random-fact-text"></p>
+                <small class="opacity-75" id="random-fact-breed"></small>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm" style="background:rgba(255,255,255,0.1); color:#fff;" onclick="fetchRandomFact()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Ещё
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.breed-hero {
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+    border-radius: var(--card-radius) var(--card-radius) 0 0;
+    display: block;
+}
+.breed-hero-fallback {
+    width: 100%;
+    height: 210px;
+    border-radius: var(--card-radius) var(--card-radius) 0 0;
+    background: linear-gradient(135deg, #f0e6d3, #e8d5b7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showApiResult(label, data) {
+    const area = document.getElementById('api-result-area');
+    document.getElementById('api-result-label').textContent = label;
+    document.getElementById('api-result-pre').textContent = JSON.stringify(data, null, 2);
+    area.classList.remove('d-none');
+    area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeApiResult() {
+    document.getElementById('api-result-area').classList.add('d-none');
+}
+
+async function fetchBreeds() {
+    try {
+        const res = await fetch('/api/breeds');
+        const data = await res.json();
+        document.getElementById('random-fact-display').classList.add('d-none');
+        showApiResult('GET /api/breeds — ' + data.length + ' пород', data);
+    } catch (e) {
+        alert('Ошибка загрузки: ' + e.message);
+    }
+}
+
+async function fetchRandomFact() {
+    try {
+        const res = await fetch('/api/random_fact');
+        const data = await res.json();
+        document.getElementById('api-result-area').classList.add('d-none');
+        document.getElementById('random-fact-text').textContent = data.content;
+        document.getElementById('random-fact-breed').innerHTML =
+            '<i class="bi bi-tag me-1"></i>' + data.breed_name_ru + ' (' + data.breed_name_en + ')';
+        const display = document.getElementById('random-fact-display');
+        display.classList.remove('d-none');
+        display.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+        alert('Ошибка загрузки: ' + e.message);
+    }
+}
+
+async function fetchBreedById() {
+    const id = document.getElementById('breedIdInput').value;
+    if (!id) return;
+    try {
+        const res = await fetch('/api/breeds/' + id);
+        if (!res.ok) { alert('Порода #' + id + ' не найдена.'); return; }
+        const data = await res.json();
+        document.getElementById('random-fact-display').classList.add('d-none');
+        showApiResult('GET /api/breeds/' + id + ' — ' + data.name_ru, data);
+    } catch (e) {
+        alert('Ошибка загрузки: ' + e.message);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}{{ breed.name_ru }}{% endblock %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('main.index') }}" class="text-decoration-none" style="color: var(--primary);">Главная</a>
+        </li>
+        <li class="breadcrumb-item active">{{ breed.name_ru }}</li>
+    </ol>
+</nav>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-5">
+        {% if breed.image_url %}
+        <img src="{{ breed.image_url }}"
+             alt="{{ breed.name_en }}"
+             class="img-fluid rounded-4 shadow w-100"
+             style="height:340px; object-fit:cover;"
+             onerror="this.outerHTML='<div class=\'breed-detail-fallback rounded-4 shadow\'><span>🐶</span></div>'">
+        {% else %}
+        <div class="breed-detail-fallback rounded-4 shadow"><span>🐶</span></div>
+        {% endif %}
+    </div>
+    <div class="col-md-7">
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <h1 class="fw-bold mb-0">{{ breed.name_ru }}</h1>
+            <span class="badge-paw fs-6">{{ breed.name_en }}</span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-3 my-3">
+            {% if breed.origin %}
+            <div class="d-flex align-items-center gap-1 text-muted small">
+                <i class="bi bi-geo-alt-fill" style="color:var(--primary)"></i>
+                <span><strong>Происхождение:</strong> {{ breed.origin }}</span>
+            </div>
+            {% endif %}
+            {% if breed.size %}
+            <div class="d-flex align-items-center gap-1 text-muted small">
+                <i class="bi bi-rulers" style="color:var(--primary)"></i>
+                <span><strong>Размер:</strong> {{ breed.size }}</span>
+            </div>
+            {% endif %}
+            {% if breed.lifespan %}
+            <div class="d-flex align-items-center gap-1 text-muted small">
+                <i class="bi bi-clock-fill" style="color:var(--primary)"></i>
+                <span><strong>Продолжительность жизни:</strong> {{ breed.lifespan }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if breed.description %}
+        <p class="lead" style="font-size:1rem; line-height:1.7;">{{ breed.description }}</p>
+        {% endif %}
+
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+            <a href="/api/breeds/{{ breed.id }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-code-slash me-1"></i>JSON данные
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Все породы
+            </a>
+        </div>
+    </div>
+</div>
+
+<h2 class="section-heading mb-4">
+    <i class="bi bi-lightbulb-fill me-2" style="color:var(--primary)"></i>Интересные факты
+</h2>
+
+{% if not current_user.is_authenticated %}
+<div class="alert alert-light border rounded-3 mb-4 d-flex align-items-center gap-2">
+    <i class="bi bi-info-circle-fill" style="color:var(--primary)"></i>
+    <span>
+        <a href="{{ url_for('auth.login') }}" class="fw-bold text-decoration-none" style="color:var(--primary);">Войдите</a>
+        или
+        <a href="{{ url_for('auth.register') }}" class="fw-bold text-decoration-none" style="color:var(--primary);">зарегистрируйтесь</a>,
+        чтобы ставить лайки на факты.
+    </span>
+</div>
+{% endif %}
+
+{% for fact in breed.facts %}
+<div class="fact-card d-flex justify-content-between align-items-start gap-3" id="fact-{{ fact.id }}">
+    <div class="flex-grow-1">
+        <p class="mb-0 fw-semibold" style="font-size:1.05rem; line-height:1.6;">{{ fact.content }}</p>
+    </div>
+    <div class="d-flex flex-column align-items-center" style="min-width:56px;">
+        {% if current_user.is_authenticated %}
+        <form action="{{ url_for('main.toggle_like', fact_id=fact.id) }}" method="POST"
+              class="like-form" data-fact-id="{{ fact.id }}">
+            <button type="submit"
+                    class="like-btn {{ 'liked' if fact.id in liked_fact_ids else '' }}"
+                    title="{{ 'Убрать лайк' if fact.id in liked_fact_ids else 'Поставить лайк' }}">
+                <i class="bi bi-heart{% if fact.id in liked_fact_ids %}-fill{% endif %} fs-4"></i>
+            </button>
+        </form>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}" class="like-btn" title="Войдите, чтобы лайкнуть">
+            <i class="bi bi-heart fs-4" style="color:#ccc;"></i>
+        </a>
+        {% endif %}
+        <span class="text-muted small mt-1 like-count-{{ fact.id }}">{{ fact.like_count }}</span>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.breed-detail-fallback {
+    width: 100%;
+    height: 340px;
+    background: linear-gradient(135deg, #f0e6d3, #e8d5b7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.like-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const factId = form.dataset.factId;
+        const btn = form.querySelector('.like-btn');
+        const icon = btn.querySelector('i');
+        const countEl = document.querySelector(`.like-count-${factId}`);
+
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (data.liked) {
+                btn.classList.add('liked');
+                icon.className = 'bi bi-heart-fill fs-4';
+                btn.title = 'Убрать лайк';
+            } else {
+                btn.classList.remove('liked');
+                icon.className = 'bi bi-heart fs-4';
+                btn.title = 'Поставить лайк';
+            }
+            countEl.textContent = data.count;
+        } catch (err) {
+            form.submit();
+        }
+    });
+});
+</script>
+{% endblock %}

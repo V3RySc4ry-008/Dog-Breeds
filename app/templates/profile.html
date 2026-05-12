@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+
+        <div class="card p-4 p-md-5 text-center mb-4">
+            {% if current_user.avatar %}
+                <img src="{{ url_for('static', filename='uploads/' + current_user.avatar) }}"
+                     class="avatar-img mx-auto mb-3"
+                     alt="Аватар">
+            {% else %}
+                <div class="avatar-placeholder mx-auto mb-3">
+                    {{ current_user.username[0].upper() }}
+                </div>
+            {% endif %}
+
+            <h3 class="fw-bold mb-1">{{ current_user.username }}</h3>
+            <p class="text-muted mb-1">{{ current_user.email }}</p>
+            <p class="text-muted small">
+                <i class="bi bi-calendar3 me-1"></i>
+                Зарегистрирован: {{ current_user.created_at.strftime('%d.%m.%Y') }}
+            </p>
+
+            <div class="d-flex justify-content-center gap-4 mt-3">
+                <div class="text-center">
+                    <div class="fw-bold fs-4" style="color:var(--primary);">{{ current_user.likes|length }}</div>
+                    <div class="text-muted small">Лайков поставлено</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 p-md-5">
+            <h5 class="fw-bold mb-4">
+                <i class="bi bi-camera me-2" style="color:var(--primary)"></i>Обновить аватар
+            </h5>
+
+            <form method="POST" enctype="multipart/form-data" novalidate>
+                {{ form.hidden_tag() }}
+
+                <div class="mb-3">
+                    {{ form.avatar.label(class='form-label fw-semibold') }}
+                    {{ form.avatar(class='form-control rounded-3' + (' is-invalid' if form.avatar.errors else ''), accept='image/*') }}
+                    {% for error in form.avatar.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                    <div class="form-text">PNG, JPG, GIF, WebP — до 2 МБ</div>
+                </div>
+
+                <div class="d-grid">
+                    {{ form.submit(class='btn btn-primary py-2 fw-bold') }}
+                </div>
+            </form>
+        </div>
+
+        {% if current_user.likes %}
+        <div class="card p-4 p-md-5 mt-4">
+            <h5 class="fw-bold mb-4">
+                <i class="bi bi-heart-fill me-2" style="color:#e74c3c"></i>Понравившиеся факты
+            </h5>
+            {% for like in current_user.likes %}
+            <div class="fact-card mb-3">
+                <p class="mb-1 fw-semibold">{{ like.fact.content }}</p>
+                <small class="text-muted">
+                    <i class="bi bi-tag me-1"></i>
+                    <a href="{{ url_for('main.breed_detail', breed_id=like.fact.breed_id) }}"
+                       class="text-decoration-none" style="color:var(--primary);">
+                        {{ like.fact.breed.name_ru }}
+                    </a>
+                </small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-box-arrow-right me-1"></i>Выйти из аккаунта
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
