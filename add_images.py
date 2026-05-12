@@ -11,30 +11,32 @@ app = create_app()
 
 def add_images():
     with app.app_context():
-        # Словарь с русскими названиями и ссылками на картинки
-        images = {
-            "Мопс": "https://images.dog.ceo/breeds/pug/pug.jpg",
-            "Бигль": "https://images.dog.ceo/breeds/beagle/beagle.jpg",
-            "Шпиц": "https://images.dog.ceo/breeds/spitz/spitz.jpg",
-            "Алабай": "https://images.dog.ceo/breeds/centralasian-1.jpg",
-            "Чихуахуа": "https://images.dog.ceo/breeds/chihuahua/chihuahua.jpg"
+        # Задаём соответствие: русское название породы → имя файла картинки
+        # ТЫ МОЖЕШЬ МЕНЯТЬ ЭТИ ИМЕНА ФАЙЛОВ НА СВОИ!
+        images_map = {
+            "Мопс": "pug.jpg",
+            "Бигль": "beagle.jpg",
+            "Шпиц": "spitz.jpg",
+            "Алабай": "alabai.jpg",
+            "Чихуахуа": "chihuahua.jpg"
         }
         
-        # Получаем всех собак из БД
         breeds = Breed.query.all()
-        
         updated = 0
+        
         for breed in breeds:
-            # Ищем по русскому названию
-            if breed.name_ru in images:
-                breed.image_url = images[breed.name_ru]
-                print(f"✅ {breed.name_ru} — картинка добавлена")
+            if breed.name_ru in images_map:
+                # Формируем путь: /static/images/breeds/имя_файла
+                breed.image_url = f"/static/images/breeds/{images_map[breed.name_ru]}"
+                print(f"✅ {breed.name_ru} → {breed.image_url}")
                 updated += 1
             else:
                 print(f"⚠️ {breed.name_ru} — не найдено в словаре")
         
         db.session.commit()
-        print(f"🎉")
+        print(f"\n🎉 Обновлено {updated} пород.")
+        print("📁 Теперь загрузи свои картинки в папку: app/static/images/breeds/")
+        print("   Имена файлов должны соответствовать указанным выше:")
 
 if __name__ == "__main__":
-    add_images() 
+    add_images()
